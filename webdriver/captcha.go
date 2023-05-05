@@ -30,25 +30,25 @@ func isReady(webDriver selenium.WebDriver) bool {
 
 //goland:noinspection GoUnhandledErrorResult
 func HandleCaptcha(webDriver selenium.WebDriver) bool {
-	webDriver.Wait(func(driver selenium.WebDriver) (bool, error) {
+	webDriver.WaitWithTimeoutAndInterval(func(driver selenium.WebDriver) (bool, error) {
 		title, _ := driver.Title()
 		if strings.Contains(title, api.ChatGPTTitleText) {
 			return true, nil
 		}
 
 		if err := webDriver.SwitchFrame(0); err != nil {
-			return false, nil
+			return true, nil
 		}
 
 		return true, nil
-	})
+	}, time.Second*checkCaptchaTimeout, time.Second*checkCaptchaInterval)
 
 	title, _ := webDriver.Title()
 	if strings.Contains(title, api.ChatGPTTitleText) {
 		return true
 	}
 
-	err := webDriver.Wait(func(driver selenium.WebDriver) (bool, error) {
+	err := webDriver.WaitWithTimeoutAndInterval(func(driver selenium.WebDriver) (bool, error) {
 		title, _ := webDriver.Title()
 		if strings.Contains(title, api.ChatGPTTitleText) {
 			return true, nil
@@ -56,12 +56,12 @@ func HandleCaptcha(webDriver selenium.WebDriver) bool {
 
 		element, err := driver.FindElement(selenium.ByCSSSelector, "input")
 		if err != nil {
-			return false, nil
+			return true, nil
 		}
 
 		element.Click()
 		return true, nil
-	})
+	}, time.Second*checkCaptchaTimeout, time.Second*checkCaptchaInterval)
 
 	if err != nil {
 		webDriver.Refresh()
@@ -69,6 +69,7 @@ func HandleCaptcha(webDriver selenium.WebDriver) bool {
 	} else {
 		title, _ := webDriver.Title()
 		if title == "" || title == "Just a moment..." {
+			webDriver.Refresh()
 			HandleCaptcha(webDriver)
 		}
 	}
