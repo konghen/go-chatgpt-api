@@ -5,14 +5,13 @@ import (
 	"time"
 
 	"github.com/linweiyuan/go-chatgpt-api/api"
-	"github.com/linweiyuan/go-chatgpt-api/util/logger"
 	"github.com/tebeka/selenium"
 )
 
 const (
 	checkCaptchaTimeout      = 15
-	checkAccessDeniedTimeout = 5
 	checkCaptchaInterval     = 1
+	clickedCaptchaWaitSecond = 5
 )
 
 func isReady(webDriver selenium.WebDriver) bool {
@@ -37,7 +36,7 @@ func HandleCaptcha(webDriver selenium.WebDriver) bool {
 		}
 
 		if err := webDriver.SwitchFrame(0); err != nil {
-			return true, nil
+			return false, nil
 		}
 
 		return true, nil
@@ -56,42 +55,30 @@ func HandleCaptcha(webDriver selenium.WebDriver) bool {
 
 		element, err := driver.FindElement(selenium.ByCSSSelector, "input")
 		if err != nil {
-			return true, nil
+			return false, nil
 		}
 
 		element.Click()
+		time.Sleep(time.Second * clickedCaptchaWaitSecond)
 		return true, nil
 	}, time.Second*checkCaptchaTimeout, time.Second*checkCaptchaInterval)
 
 	if err != nil {
-		webDriver.Refresh()
-		HandleCaptcha(webDriver)
+		retry(webDriver)
 	} else {
 		title, _ := webDriver.Title()
 		if title == "" || title == "Just a moment..." {
-			webDriver.Refresh()
-			HandleCaptcha(webDriver)
+			retry(webDriver)
 		}
 	}
 
 	return err == nil
 }
 
-func isAccessDenied(webDriver selenium.WebDriver) bool {
-	err := webDriver.WaitWithTimeoutAndInterval(func(driver selenium.WebDriver) (bool, error) {
-		element, err := driver.FindElement(selenium.ByClassName, "cf-error-details")
-		if err != nil {
-			return false, nil
-		}
-
-		accessDeniedText, _ := element.Text()
-		logger.Error(accessDeniedText)
-		return true, nil
-	}, time.Second*checkAccessDeniedTimeout, time.Second*checkCaptchaInterval)
-
-	if err != nil {
-		return false
+func retry(webDriver selenium.WebDriver) {
+	time.Sleep(time.Second)
+	err := webDriver.Refresh()
+	if err == nil {
+		HandleCaptcha(webDriver)
 	}
-
-	return true
 }

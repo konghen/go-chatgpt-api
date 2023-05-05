@@ -1,6 +1,7 @@
 package webdriver
 
 import (
+	"encoding/json"
 	"os"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 )
 
 var WebDriver selenium.WebDriver
+var CookiesChannel = make(chan string)
 
 //goland:noinspection GoUnhandledErrorResult,SpellCheckingInspection
 func init() {
@@ -53,10 +55,8 @@ func init() {
 	if isReady(WebDriver) {
 		logger.Info(api.ChatGPTWelcomeText)
 	} else {
-		if !isAccessDenied(WebDriver) {
-			if HandleCaptcha(WebDriver) {
-				logger.Info(api.ChatGPTWelcomeText)
-			}
+		if HandleCaptcha(WebDriver) {
+			logger.Info(api.ChatGPTWelcomeText)
 		}
 	}
 
@@ -66,7 +66,26 @@ func init() {
 			select {
 			case <-ticker.C:
 				refresh()
+
+				SendCookies()
 			}
 		}
 	}()
+}
+
+//goland:noinspection GoUnhandledErrorResult
+func SendCookies() {
+	cookies, err := WebDriver.GetCookies()
+	if err != nil {
+		WebDriver.Refresh()
+		return
+	}
+
+	responseMap := make(map[string]string)
+	for _, cookie := range cookies {
+		responseMap[cookie.Name] = cookie.Value
+	}
+
+	jsonBytes, _ := json.Marshal(responseMap)
+	CookiesChannel <- string(jsonBytes)
 }
