@@ -19,6 +19,7 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		cookies, err := webdriver.WebDriver.GetCookies()
 		if err != nil {
+			webdriver.WebDriver.Refresh()
 			c.JSON(http.StatusInternalServerError, api.ReturnMessage(err.Error()))
 			return
 		}
